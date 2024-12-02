@@ -1,20 +1,14 @@
 use std::{error::Error, fs};
 
 fn read_input(path: &str) -> Result<Vec<Vec<i32>>, Box<dyn Error>> {
-    let content = fs::read_to_string(path)?;
-
-    let mut reports: Vec<Vec<i32>> = Vec::new();
-
-    for line in content.lines() {
-        let values: Vec<i32> = line
-            .split_whitespace()
-            .map(|s| s.parse().unwrap())
-            .collect();
-
-        reports.push(values);
-    }
-
-    Ok(reports)
+    Ok(fs::read_to_string(path)?
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .map(|s| s.parse().unwrap())
+                .collect()
+        })
+        .collect())
 }
 
 fn is_safe(report: &[i32]) -> bool {
@@ -29,29 +23,28 @@ fn is_safe(report: &[i32]) -> bool {
 
 fn hold_out(x: &[i32], i: usize) -> Vec<i32> {
     x.iter()
-    .take(i)
-    .chain(x.iter().skip(i+1))
-    .copied()
-    .collect()
+        .take(i)
+        .chain(x.iter().skip(i + 1))
+        .copied()
+        .collect()
 }
 
 fn problem_dampener(report: &[i32]) -> bool {
-    let mut _is_safe = false;
-    for i in 0..report.len() {
-        let report_without_i = hold_out(report, i);
-        _is_safe = _is_safe || is_safe(&report_without_i);
-    }
-    _is_safe
+    (0..report.len()).any(|i| is_safe(&hold_out(report, i)))
 }
 
 fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
-    let reports: Vec<Vec<i32>> = read_input(path)?;
-    Ok(reports.iter().filter(|&report| is_safe(report)).count())
+    Ok(read_input(path)?
+        .iter()
+        .filter(|&report| is_safe(report))
+        .count())
 }
 
 fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
-    let reports: Vec<Vec<i32>> = read_input(path)?;
-    Ok(reports.iter().filter(|&report| problem_dampener(report)).count())
+    Ok(read_input(path)?
+        .iter()
+        .filter(|&report| problem_dampener(report))
+        .count())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
