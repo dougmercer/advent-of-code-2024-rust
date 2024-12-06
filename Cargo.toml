@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+atoi = "2.0.0"
 itertools = "0.13.0"
 topological-sort = "0.2.2"
