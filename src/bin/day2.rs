@@ -1,14 +1,18 @@
 use std::{error::Error, fs};
 
 fn read_input(path: &str) -> Result<Vec<Vec<i32>>, Box<dyn Error>> {
-    Ok(fs::read_to_string(path)?
+    let result: Result<Vec<Vec<i32>>, Box<dyn Error>> = fs::read_to_string(path)?
         .lines()
         .map(|line| {
             line.split_whitespace()
-                .map(|s| s.parse().unwrap())
+                .map(|s| {
+                    s.parse()
+                        .map_err(|e| format!("Invalid input: {}", e).into())
+                })
                 .collect()
         })
-        .collect())
+        .collect();
+    Ok(result?)
 }
 
 fn is_safe(report: &[i32]) -> bool {
