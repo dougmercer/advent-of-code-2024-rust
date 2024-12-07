@@ -2,5 +2,5 @@
 
 ## Getting started
 ```console
-cargo run --bin day1
+cargo run --release --bin day1
 ```
