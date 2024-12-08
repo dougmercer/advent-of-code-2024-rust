@@ -1,5 +1,6 @@
 use itertools::repeat_n;
 use itertools::Itertools;
+use rayon::prelude::*;
 use std::{error::Error, fs, iter::successors};
 
 // https://stackoverflow.com/a/69302957
@@ -70,7 +71,7 @@ fn find_answer(result: &u64, values: &[u64], ops: &[Operator]) -> bool {
 
 fn part(path: &str, ops: &[Operator]) -> Result<u64, Box<dyn Error>> {
     Ok(read_input(path)?
-        .iter()
+        .par_iter()
         .filter(|(result, values)| find_answer(result, values, &ops))
         .map(|(a, _)| a)
         .sum())
