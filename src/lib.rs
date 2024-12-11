@@ -1,4 +1,5 @@
 use std::ops::{Index, IndexMut};
+use std::iter::successors;
 
 #[derive(Clone)]
 pub struct Grid<T> {
@@ -96,4 +97,9 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Grid<T> {
         }
         write!(f, "}}")
     }
+}
+
+
+pub fn digits(n: u64) -> u32 {
+    successors(Some(n), |&n| (n >= 10).then(|| n / 10)).count() as u32
 }
