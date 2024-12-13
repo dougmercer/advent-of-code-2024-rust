@@ -108,6 +108,6 @@ fn problem(path: &str, resonant: bool) -> Result<usize, Box<dyn Error>> {
 fn main() {
     // let path: &str = "data/day8.sample";
     let path: &str = "data/day8.input";
-    println!("{:}", problem(path, false).unwrap());
-    println!("{:}", problem(path, true).unwrap());
+    println!("Part 1: {:}", problem(path, false).unwrap());
+    println!("Part 2: {:}", problem(path, true).unwrap());
 }

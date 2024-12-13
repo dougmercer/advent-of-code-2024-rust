@@ -76,8 +76,8 @@ fn part2(path: &str) -> Result<i32, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // let path: &str = "data/day1/sample.csv";
-    let path: &str = "data/day1/input.csv";
+    // let path: &str = "data/day1.sample";
+    let path: &str = "data/day1.input";
     println!("Part 1: {:?}", part1(path)?);
     println!("Part 2: {:?}", part2(path)?);
     Ok(())

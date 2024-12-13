@@ -81,8 +81,8 @@ fn main() {
     let path = "data/day7.input";
 
     let ops_part1 = vec![Operator::Add, Operator::Multiply];
-    println!("{:?}", part(path, &ops_part1).unwrap());
+    println!("Part 1: {:?}", part(path, &ops_part1).unwrap());
 
     let ops_part2 = vec![Operator::Add, Operator::Multiply, Operator::Concat];
-    println!("{:?}", part(path, &ops_part2).unwrap());
+    println!("Part 2: {:?}", part(path, &ops_part2).unwrap());
 }

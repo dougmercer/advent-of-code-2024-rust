@@ -280,13 +280,13 @@ fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
             &mut map,
             start.direction,
         );
-        println!("{}", guard);
+        // println!("{}", guard);
         let mut is_in_room: bool = true;
         while is_in_room {
             is_in_room = guard.step();
             // println!("{:?}", guard);
         }
-        println!("{:?}", map);
+        // println!("{:?}", map);
         return Ok(map.visited.iter().filter(|&x| !x.is_empty()).count());
     }
     Ok(0)
@@ -337,7 +337,7 @@ fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
             .filter_map(|(x, y)| check_if_would_loop_if_obstacle(x as i32, y as i32, &map, &start))
             .collect();
 
-        println!("{}", map.debug_loop_points(start.position, &loop_points));
+        // println!("{}", map.debug_loop_points(start.position, &loop_points));
         Ok(loop_points.len())
     } else {
         Ok(0)
@@ -346,7 +346,7 @@ fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day6.input";
-    println!("{:?}", part1(path)?);
-    println!("{:?}", part2(path)?);
+    println!("Part 1: {:?}", part1(path)?);
+    println!("Part 2: {:?}", part2(path)?);
     Ok(())
 }

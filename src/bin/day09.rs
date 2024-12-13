@@ -136,8 +136,8 @@ fn main() {
     let path = "data/day9.input";
     let encoded = read_input(path);
 
-    println!("{}", part1(encoded.clone()));
-    println!("{}", part2(encoded));
+    println!("Part 1: {}", part1(encoded.clone()));
+    println!("Part 2: {}", part2(encoded));
 }
 
 

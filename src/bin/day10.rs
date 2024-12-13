@@ -134,6 +134,6 @@ fn problem(path: &str, as_rating: bool) -> Result<usize, Box<dyn Error>> {
 fn main() {
     // let path: &str = "data/day10.sample";
     let path: &str = "data/day10.input";
-    println!("{:}", problem(path, false).unwrap());
-    println!("{:}", problem(path, true).unwrap());
+    println!("Part 1: {:}", problem(path, false).unwrap());
+    println!("Part 2: {:}", problem(path, true).unwrap());
 }
