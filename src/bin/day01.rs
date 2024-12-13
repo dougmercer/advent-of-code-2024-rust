@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::{error::Error, fs};
 
-fn read_input(path: &str) -> Result<(Vec<i32>, Vec<i32>), Box<dyn Error>> {
-    let content = fs::read_to_string(path)?;
-
+fn parse_input(content: &str) -> (Vec<i32>, Vec<i32>) {
     let mut col1: Vec<i32> = Vec::new();
     let mut col2: Vec<i32> = Vec::new();
 
@@ -20,7 +18,7 @@ fn read_input(path: &str) -> Result<(Vec<i32>, Vec<i32>), Box<dyn Error>> {
     col1.sort();
     col2.sort();
 
-    Ok((col1, col2))
+    (col1, col2)
 }
 
 fn count(values: &[i32]) -> HashMap<i32, i32> {
@@ -36,8 +34,8 @@ fn count(values: &[i32]) -> HashMap<i32, i32> {
     // map
 }
 
-fn part1(path: &str) -> Result<i32, Box<dyn Error>> {
-    let (col1, col2) = read_input(path)?;
+fn part1(content: &str) -> i32 {
+    let (col1, col2) = parse_input(content);
 
     // // Original Approach
     // let mut distance: i32 = 0;
@@ -45,15 +43,14 @@ fn part1(path: &str) -> Result<i32, Box<dyn Error>> {
     //     distance += (val1 - val2).abs();
     // }
 
-    Ok(col1
-        .iter()
+    col1.iter()
         .zip(col2.iter())
         .map(|(a, b)| (a - b).abs())
-        .sum())
+        .sum()
 }
 
-fn part2(path: &str) -> Result<i32, Box<dyn Error>> {
-    let (col1, col2) = read_input(path)?;
+fn part2(content: &str) -> i32 {
+    let (col1, col2) = parse_input(content);
 
     // Compute similarity
     let counter1 = count(&col1);
@@ -69,16 +66,29 @@ fn part2(path: &str) -> Result<i32, Box<dyn Error>> {
     //     }
     // }
 
-    Ok(counter1
+    counter1
         .iter()
         .filter_map(|(&key, &val1)| counter2.get(&key).map(|val2| key * val1 * val2))
-        .sum())
+        .sum()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     // let path: &str = "data/day1.sample";
     let path: &str = "data/day1.input";
-    println!("Part 1: {:?}", part1(path)?);
-    println!("Part 2: {:?}", part2(path)?);
+    let content = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&content));
+    println!("Part 2: {:?}", part2(&content));
     Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = ["3   4", "4   3", "2   5", "1   3", "3   9", "3   3"].join("\n");
+    assert_eq!(part1(&input), 11);
+}
+
+#[test]
+fn test_part2() {
+    let input = ["3   4", "4   3", "2   5", "1   3", "3   9", "3   3"].join("\n");
+    assert_eq!(part2(&input), 31);
 }

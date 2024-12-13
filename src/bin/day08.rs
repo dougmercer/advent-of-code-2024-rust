@@ -37,12 +37,11 @@ impl From<(usize, usize)> for Position {
     }
 }
 
-fn read_input(path: &str) -> Result<Grid<char>, Box<dyn Error>> {
-    let input = fs::read_to_string(path)?;
+fn parse_input(input: &str) -> Grid<char> {
     let lines: Vec<&str> = input.lines().collect();
 
     if lines.is_empty() {
-        return Ok(Grid::new(0, 0, '.'));
+        return Grid::new(0, 0, '.');
     }
 
     let height = lines.len();
@@ -50,11 +49,11 @@ fn read_input(path: &str) -> Result<Grid<char>, Box<dyn Error>> {
 
     let chars = lines.into_iter().flat_map(|line| line.chars()).collect();
 
-    Ok(Grid {
+    Grid {
         data: chars,
         width,
         height,
-    })
+    }
 }
 
 fn get_antinodes(a: Position, b: Position, antennas: &Grid<char>, resonant: bool) -> Vec<Position> {
@@ -92,22 +91,59 @@ fn find_antinodes_for_freq(antennas: &Grid<char>, freq: char, resonant: bool) ->
     antinodes
 }
 
-fn problem(path: &str, resonant: bool) -> Result<usize, Box<dyn Error>> {
-    let antennas = read_input(path)?;
+fn problem(input: &str, resonant: bool) -> usize {
+    let antennas = parse_input(&input);
 
-    Ok(antennas
+    antennas
         .iter()
         .unique()
         .filter(|&c| c != &'.' && c != &'\n')
         .map(|&c| c)
         .flat_map(|freq| find_antinodes_for_freq(&antennas, freq, resonant))
         .unique()
-        .count())
+        .count()
 }
 
-fn main() {
-    // let path: &str = "data/day8.sample";
+fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day8.input";
-    println!("Part 1: {:}", problem(path, false).unwrap());
-    println!("Part 2: {:}", problem(path, true).unwrap());
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:}", problem(&input, false));
+    println!("Part 2: {:}", problem(&input, true));
+    Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = r#"............
+........0...
+.....0......
+.......0....
+....0.......
+......A.....
+............
+............
+........A...
+.........A..
+............
+............"#;
+
+    assert_eq!(problem(&input, false), 14);
+}
+
+#[test]
+fn test_part2() {
+    let input = r#"............
+........0...
+.....0......
+.......0....
+....0.......
+......A.....
+............
+............
+........A...
+.........A..
+............
+............"#;
+
+    assert_eq!(problem(&input, true), 34);
 }

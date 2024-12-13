@@ -1,10 +1,6 @@
 use atoi::atoi;
 use std::{error::Error, fs};
 
-fn read_input(path: &str) -> Result<String, Box<dyn Error>> {
-    Ok(fs::read_to_string(path)?)
-}
-
 enum Command {
     Mul(i32),
     Do,
@@ -62,9 +58,8 @@ fn try_parse_command(bytes: &[u8]) -> Option<(Command, usize)> {
     try_parse_mul(bytes)
 }
 
-fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
-    let content = read_input(path)?;
-    let bytes = content.as_bytes();
+fn part1(input: &str) -> usize {
+    let bytes = input.as_bytes();
 
     let sum: i32 = (0..bytes.len())
         .filter_map(|i| try_parse_command(&bytes[i..]))
@@ -73,12 +68,11 @@ fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
             _ => sum,
         });
 
-    Ok(sum.try_into().unwrap())
+    sum.try_into().unwrap()
 }
 
-fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
-    let content = read_input(path)?;
-    let bytes = content.as_bytes();
+fn part2(input: &str) -> usize {
+    let bytes = input.as_bytes();
 
     let mut enabled = true;
     let sum: i32 = (0..bytes.len())
@@ -96,12 +90,25 @@ fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
             _ => sum,
         });
 
-    Ok(sum.try_into().unwrap())
+    sum.try_into().unwrap()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day3.input";
-    println!("Part 1: {:?}", part1(path)?);
-    println!("Part 2: {:?}", part2(path)?);
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&input));
+    println!("Part 2: {:?}", part2(&input));
     Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))";
+    assert_eq!(part1(&input), 161);
+}
+
+#[test]
+fn test_part2() {
+    let input = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
+    assert_eq!(part2(&input), 48);
 }

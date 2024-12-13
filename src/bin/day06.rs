@@ -269,9 +269,8 @@ impl std::fmt::Display for Guard<'_> {
     }
 }
 
-fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
-    let contents = fs::read_to_string(path)?;
-    let (mut map, guard_start) = Map::from_str(&contents);
+fn part1(input: &str) -> Result<usize, Box<dyn Error>> {
+    let (mut map, guard_start) = Map::from_str(&input);
 
     if let Some(start) = guard_start {
         let mut guard = Guard::new(
@@ -325,9 +324,8 @@ fn check_if_would_loop_if_obstacle(
     }
 }
 
-fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
-    let contents = fs::read_to_string(path)?;
-    let (map, guard_start) = Map::from_str(&contents);
+fn part2(input: &str) -> Result<usize, Box<dyn Error>> {
+    let (map, guard_start) = Map::from_str(&input);
 
     if let Some(start) = guard_start {
         let loop_points: Vec<(usize, usize)> = (0..map.width())
@@ -346,7 +344,40 @@ fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day6.input";
-    println!("Part 1: {:?}", part1(path)?);
-    println!("Part 2: {:?}", part2(path)?);
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&input));
+    println!("Part 2: {:?}", part2(&input));
     Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = r#"....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#..."#;
+
+    assert_eq!(part1(&input).unwrap(), 41);
+}
+
+#[test]
+fn test_part2() {
+    let input = r#"....#.....
+.........#
+..........
+..#.......
+.......#..
+..........
+.#..^.....
+........#.
+#.........
+......#..."#;
+
+    assert_eq!(part2(&input).unwrap(), 6);
 }

@@ -1,18 +1,14 @@
 use std::{error::Error, fs};
 
-fn read_input(path: &str) -> Result<Vec<Vec<i32>>, Box<dyn Error>> {
-    let result: Result<Vec<Vec<i32>>, Box<dyn Error>> = fs::read_to_string(path)?
+fn parse_input(input: &str) -> Vec<Vec<i32>> {
+    input
         .lines()
         .map(|line| {
             line.split_whitespace()
-                .map(|s| {
-                    s.parse()
-                        .map_err(|e| format!("Invalid input: {}", e).into())
-                })
+                .map(|s| s.parse().unwrap())
                 .collect()
         })
-        .collect();
-    Ok(result?)
+        .collect()
 }
 
 fn is_safe(report: &[i32]) -> bool {
@@ -37,23 +33,52 @@ fn problem_dampener(report: &[i32]) -> bool {
     (0..report.len()).any(|i| is_safe(&hold_out(report, i)))
 }
 
-fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
-    Ok(read_input(path)?
+fn part1(input: &str) -> usize {
+    parse_input(input)
         .iter()
         .filter(|&report| is_safe(report))
-        .count())
+        .count()
 }
 
-fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
-    Ok(read_input(path)?
+fn part2(input: &str) -> usize {
+    parse_input(input)
         .iter()
         .filter(|&report| problem_dampener(report))
-        .count())
+        .count()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day2.input";
-    println!("Part 1: {:?}", part1(path)?);
-    println!("Part 2: {:?}", part2(path)?);
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&input));
+    println!("Part 2: {:?}", part2(&input));
     Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = [
+        "7 6 4 2 1",
+        "1 2 7 8 9",
+        "9 7 6 2 1",
+        "1 3 2 4 5",
+        "8 6 4 4 1",
+        "1 3 6 7 9",
+    ]
+    .join("\n");
+    assert_eq!(part1(&input), 2);
+}
+
+#[test]
+fn test_part2() {
+    let input = [
+        "7 6 4 2 1",
+        "1 2 7 8 9",
+        "9 7 6 2 1",
+        "1 3 2 4 5",
+        "8 6 4 4 1",
+        "1 3 6 7 9",
+    ]
+    .join("\n");
+    assert_eq!(part2(&input), 4);
 }

@@ -8,12 +8,11 @@ use std::{error::Error, fs};
 const SUMMIT_HEIGHT: u8 = 9;
 const TRAILHEAD_HEIGHT: u8 = 0;
 
-fn read_input(path: &str) -> Result<Grid<u8>, Box<dyn Error>> {
-    let input = fs::read_to_string(path)?;
+fn parse_input(input: &str) -> Grid<u8> {
     let lines: Vec<&str> = input.lines().collect();
 
     if lines.is_empty() {
-        return Ok(Grid::new(0, 0, 0));
+        return Grid::new(0, 0, 0);
     }
 
     let height = lines.len();
@@ -25,11 +24,11 @@ fn read_input(path: &str) -> Result<Grid<u8>, Box<dyn Error>> {
         .map(|c| c.to_digit(10).unwrap() as u8)
         .collect();
 
-    Ok(Grid {
+    Grid {
         data,
         width,
         height,
-    })
+    }
 }
 #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, Debug)]
 struct Node {
@@ -109,8 +108,8 @@ fn rate_trailhead(start: &Node, graph: &Graph, as_rating: bool) -> usize {
     summits
 }
 
-fn problem(path: &str, as_rating: bool) -> Result<usize, Box<dyn Error>> {
-    let values = read_input(path)?;
+fn problem(input: &str, as_rating: bool) -> usize {
+    let values = parse_input(input);
     let graph = to_graph(&values);
 
     // Get list of trailheads (0s)
@@ -119,7 +118,7 @@ fn problem(path: &str, as_rating: bool) -> Result<usize, Box<dyn Error>> {
         .collect();
 
     // Evaluate each trailhead
-    Ok(zeros
+    zeros
         .iter()
         .map(|start| {
             let start_node = Node {
@@ -128,12 +127,41 @@ fn problem(path: &str, as_rating: bool) -> Result<usize, Box<dyn Error>> {
             };
             rate_trailhead(&start_node, &graph, as_rating)
         })
-        .sum())
+        .sum()
 }
 
-fn main() {
-    // let path: &str = "data/day10.sample";
-    let path: &str = "data/day10.input";
-    println!("Part 1: {:}", problem(path, false).unwrap());
-    println!("Part 2: {:}", problem(path, true).unwrap());
+fn main() -> Result<(), Box<dyn Error>> {
+    let path = "data/day10.input";
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:}", problem(&input, false));
+    println!("Part 2: {:}", problem(&input, true));
+    Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = r#"89010123
+78121874
+87430965
+96549874
+45678903
+32019012
+01329801
+10456732
+"#;
+    assert_eq!(problem(&input, false), 36);
+}
+
+#[test]
+fn test_part2() {
+    let input = r#"89010123
+78121874
+87430965
+96549874
+45678903
+32019012
+01329801
+10456732
+"#;
+    assert_eq!(problem(&input, true), 81);
 }

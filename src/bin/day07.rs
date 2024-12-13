@@ -40,8 +40,8 @@ impl std::fmt::Display for Operator {
     }
 }
 
-fn read_input(path: &str) -> Result<Vec<(u64, Vec<u64>)>, Box<dyn Error>> {
-    Ok(fs::read_to_string(path)?
+fn parse_input(input: &str) -> Vec<(u64, Vec<u64>)> {
+    input
         .lines()
         .map(|line| {
             let (a, rest) = line.split_once(':').unwrap();
@@ -52,7 +52,7 @@ fn read_input(path: &str) -> Result<Vec<(u64, Vec<u64>)>, Box<dyn Error>> {
                     .collect(),
             )
         })
-        .collect())
+        .collect()
 }
 
 fn find_answer(result: &u64, values: &[u64], ops: &[Operator]) -> bool {
@@ -69,20 +69,52 @@ fn find_answer(result: &u64, values: &[u64], ops: &[Operator]) -> bool {
         })
 }
 
-fn part(path: &str, ops: &[Operator]) -> Result<u64, Box<dyn Error>> {
-    Ok(read_input(path)?
+fn part(path: &str, ops: &[Operator]) -> u64 {
+    parse_input(path)
         .par_iter()
         .filter(|(result, values)| find_answer(result, values, &ops))
         .map(|(a, _)| a)
-        .sum())
+        .sum()
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let path = "data/day7.input";
-
+    let input = fs::read_to_string(path)?;
     let ops_part1 = vec![Operator::Add, Operator::Multiply];
-    println!("Part 1: {:?}", part(path, &ops_part1).unwrap());
+    println!("Part 1: {:?}", part(&input, &ops_part1));
 
     let ops_part2 = vec![Operator::Add, Operator::Multiply, Operator::Concat];
-    println!("Part 2: {:?}", part(path, &ops_part2).unwrap());
+    println!("Part 2: {:?}", part(&input, &ops_part2));
+    Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = r#"190: 10 19
+3267: 81 40 27
+83: 17 5
+156: 15 6
+7290: 6 8 6 15
+161011: 16 10 13
+192: 17 8 14
+21037: 9 7 18 13
+292: 11 6 16 20"#;
+    let ops_part1 = vec![Operator::Add, Operator::Multiply];
+    assert_eq!(part(&input, &ops_part1), 3749);
+}
+
+#[test]
+fn test_part2() {
+    let input = r#"190: 10 19
+3267: 81 40 27
+83: 17 5
+156: 15 6
+7290: 6 8 6 15
+161011: 16 10 13
+192: 17 8 14
+21037: 9 7 18 13
+292: 11 6 16 20"#;
+    let ops_part2 = vec![Operator::Add, Operator::Multiply, Operator::Concat];
+
+    assert_eq!(part(&input, &ops_part2), 11387);
 }

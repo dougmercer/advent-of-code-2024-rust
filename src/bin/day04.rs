@@ -42,11 +42,8 @@ impl Direction {
     }
 }
 
-fn read_input(path: &str) -> Result<Vec<Vec<char>>, Box<dyn Error>> {
-    Ok(fs::read_to_string(path)?
-        .lines()
-        .map(|line| line.chars().collect())
-        .collect())
+fn parse_input(input: &str) -> Vec<Vec<char>> {
+    input.lines().map(|line| line.chars().collect()).collect()
 }
 
 fn is_in_bounds<T>(grid: &[Vec<T>], row: i32, col: i32) -> bool {
@@ -113,22 +110,60 @@ fn search_double_mas(grid: &[Vec<char>], i: usize, j: usize) -> bool {
     found_diagonal && found_antidiagonal
 }
 
-fn part1(path: &str) -> Result<usize, Box<dyn Error>> {
-    let grid = read_input(path)?;
-    Ok(iproduct!(0..grid.len(), 0..grid[0].len(), Direction::all())
+fn part1(input: &str) -> usize {
+    let grid = parse_input(input);
+    iproduct!(0..grid.len(), 0..grid[0].len(), Direction::all())
         .filter(|&(i, j, direction)| search_xmas(&grid, i, j, *direction))
-        .count())
+        .count()
 }
 
-fn part2(path: &str) -> Result<usize, Box<dyn Error>> {
-    let grid = read_input(path)?;
-    Ok(iproduct!(0..grid.len(), 0..grid[0].len())
+fn part2(input: &str) -> usize {
+    let grid = parse_input(input);
+    iproduct!(0..grid.len(), 0..grid[0].len())
         .filter(|&(i, j)| search_double_mas(&grid, i, j))
-        .count())
+        .count()
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day4.input";
-    println!("Part 1: {:?}", part1(path).unwrap());
-    println!("Part 2: {:?}", part2(path).unwrap());
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&input));
+    println!("Part 2: {:?}", part2(&input));
+    Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = [
+        "MMMSXXMASM",
+        "MSAMXMSMSA",
+        "AMXSXMAAMM",
+        "MSAMASMSMX",
+        "XMASAMXAMM",
+        "XXAMMXXAMA",
+        "SMSMSASXSS",
+        "SAXAMASAAA",
+        "MAMMMXMMMM",
+        "MXMXAXMASX",
+    ]
+    .join("\n");
+    assert_eq!(part1(&input), 18);
+}
+
+#[test]
+fn test_part2() {
+    let input = [
+        "MMMSXXMASM",
+        "MSAMXMSMSA",
+        "AMXSXMAAMM",
+        "MSAMASMSMX",
+        "XMASAMXAMM",
+        "XXAMMXXAMA",
+        "SMSMSASXSS",
+        "SAXAMASAAA",
+        "MAMMMXMMMM",
+        "MXMXAXMASX",
+    ]
+    .join("\n");
+    assert_eq!(part2(&input), 9);
 }

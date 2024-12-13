@@ -2,11 +2,9 @@ use itertools::Itertools;
 use std::{error::Error, fs};
 use topological_sort::TopologicalSort;
 
-fn read_input(path: &str) -> Result<(Vec<(u32, u32)>, Vec<Vec<u32>>), Box<dyn Error>> {
-    let content = fs::read_to_string(path)?;
-
+fn parse_input(input: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
     // Split content into two parts on double newline
-    let (rules_str, pages_str) = content.split_once("\n\n").unwrap_or((&content, ""));
+    let (rules_str, pages_str) = input.split_once("\n\n").unwrap_or((&input, ""));
 
     // Parse the rules
     let rules = rules_str
@@ -25,7 +23,7 @@ fn read_input(path: &str) -> Result<(Vec<(u32, u32)>, Vec<Vec<u32>>), Box<dyn Er
         .map(|line| line.split(',').map(|s| s.parse().unwrap()).collect())
         .collect();
 
-    Ok((rules, pages))
+    (rules, pages)
 }
 
 fn is_relevant_rule(rule: (u32, u32), pages: &[u32]) -> bool {
@@ -63,9 +61,9 @@ fn get_midpoint(values: &[u32]) -> u32 {
     values[values.len() / 2]
 }
 
-fn part1(path: &str) -> Result<u32, Box<dyn Error>> {
-    let (rules, orders) = read_input(path).unwrap();
-    let total: u32 = orders
+fn part1(input: &str) -> u32 {
+    let (rules, orders) = parse_input(input);
+    orders
         .into_iter()
         .filter_map(|original_order| {
             let sorted_order = sort_by_rules(rules.clone(), original_order.clone()).unwrap();
@@ -75,13 +73,12 @@ fn part1(path: &str) -> Result<u32, Box<dyn Error>> {
                 None
             }
         })
-        .sum();
-    Ok(total)
+        .sum()
 }
 
-fn part2(path: &str) -> Result<u32, Box<dyn Error>> {
-    let (rules, orders) = read_input(path).unwrap();
-    let total: u32 = orders
+fn part2(input: &str) -> u32 {
+    let (rules, orders) = parse_input(input);
+    orders
         .into_iter()
         .filter_map(|original_order| {
             let sorted_order = sort_by_rules(rules.clone(), original_order.clone()).unwrap();
@@ -91,12 +88,81 @@ fn part2(path: &str) -> Result<u32, Box<dyn Error>> {
                 Some(get_midpoint(&sorted_order))
             }
         })
-        .sum();
-    Ok(total)
+        .sum()
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day5.input";
-    println!("Part 1: {}", part1(path).unwrap());
-    println!("Part 2: {}", part2(path).unwrap());
+    let input = fs::read_to_string(path)?;
+    println!("Part 1: {:?}", part1(&input));
+    println!("Part 2: {:?}", part2(&input));
+    Ok(())
+}
+
+#[test]
+fn test_part1() {
+    let input = r#"47|53
+97|13
+97|61
+97|47
+75|29
+61|13
+75|53
+29|13
+97|29
+53|29
+61|53
+97|53
+61|29
+47|13
+75|47
+97|75
+47|61
+75|61
+47|29
+75|13
+53|13
+
+75,47,61,53,29
+97,61,53,29,13
+75,29,13
+75,97,47,61,53
+61,13,29
+97,13,75,29,47"#;
+
+    assert_eq!(part1(&input), 143);
+}
+
+#[test]
+fn test_part2() {
+    let input = r#"47|53
+97|13
+97|61
+97|47
+75|29
+61|13
+75|53
+29|13
+97|29
+53|29
+61|53
+97|53
+61|29
+47|13
+75|47
+97|75
+47|61
+75|61
+47|29
+75|13
+53|13
+
+75,47,61,53,29
+97,61,53,29,13
+75,29,13
+75,97,47,61,53
+61,13,29
+97,13,75,29,47"#;
+
+    assert_eq!(part2(&input), 123);
 }
