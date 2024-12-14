@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 atoi = "2.0.0"
 bitflags = "2.6.0"
+image = "0.25.5"
 itertools = "0.13.0"
 rayon = "1.10.0"
 topological-sort = "0.2.2"
