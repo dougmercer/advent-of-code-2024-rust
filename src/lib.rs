@@ -2,7 +2,6 @@ use std::iter::successors;
 use std::ops::{Index, IndexMut};
 
 pub mod graph;
-
 pub use graph::Graph;
 
 #[derive(Clone)]
@@ -24,6 +23,34 @@ impl<T> Grid<T> {
         }
     }
 
+    pub fn parse_str<F>(input: &str, convert: F, default: T) -> Result<Self, String>
+    where
+        F: Fn(char) -> Result<T, String>,
+        T: Clone,
+    {
+        let lines: Vec<&str> = input.lines().collect();
+        if lines.is_empty() {
+            return Ok(Grid::new(0, 0, default));
+        }
+
+        let width = lines[0].len();
+        if lines.iter().any(|line| line.len() != width) {
+            return Err("Found line with incorrect width".to_string());
+        }
+
+        let data = lines
+            .iter()
+            .flat_map(|line| line.chars())
+            .map(convert)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Grid {
+            data,
+            width,
+            height: lines.len(),
+        })
+    }
+
     pub fn get(&self, x: usize, y: usize) -> Option<&T> {
         if x < self.width && y < self.height {
             Some(&self.data[y * self.width + x])
@@ -35,6 +62,22 @@ impl<T> Grid<T> {
     pub fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
         if x < self.width && y < self.height {
             Some(&mut self.data[y * self.width + x])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_idx(&self, idx: usize) -> Option<&T> {
+        if idx < self.data.len() {
+            Some(&self.data[idx])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_idx_mut(&mut self, idx: usize) -> Option<&T> {
+        if idx < self.data.len() {
+            Some(&mut self.data[idx])
         } else {
             None
         }
@@ -87,6 +130,18 @@ impl<T> Grid<T> {
             }
         }
         result
+    }
+
+    pub fn swap(&mut self, a: (usize, usize), b: (usize, usize)) {
+        let (ax, ay) = a;
+        let (bx, by) = b;
+        self.data.swap(ay * self.width + ax, by * self.width + bx);
+    }
+
+    pub fn idx_to_xy(&self, idx: usize) -> (usize, usize) {
+        let x = idx % self.width;
+        let y = (idx - x) / self.width;
+        (x, y)
     }
 }
 
