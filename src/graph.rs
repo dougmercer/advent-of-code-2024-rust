@@ -329,6 +329,93 @@ where
     }
 }
 
+impl<'a, N, W> Dijkstra<'a, N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default + Eq,
+{
+    pub fn all_shortest_paths(&mut self, end: &N) -> Option<(Vec<Vec<N>>, W)> {
+        // Track all predecessors for each node
+        let mut all_predecessors: HashMap<N, Vec<N>> = HashMap::new();
+
+        while let Some(State { node, distance }) = self.queue.pop() {
+            if &node == end {
+                return Some((self.reconstruct_all_paths(end, &all_predecessors), distance));
+            }
+
+            if let Some(best) = self.distances.get(&node) {
+                if distance > *best {
+                    continue;
+                }
+            }
+
+            if let Some(neighbors) = self.graph.neighbors_weighted(&node) {
+                for (next, weight) in neighbors {
+                    let mut next_distance = distance.clone();
+                    next_distance += weight.clone();
+
+                    match self.distances.get(next) {
+                        Some(current_best) if next_distance > *current_best => continue,
+                        Some(current_best) if next_distance == *current_best => {
+                            // Found another path with same distance
+                            all_predecessors
+                                .entry(next.clone())
+                                .or_default()
+                                .push(node.clone());
+                        }
+                        _ => {
+                            // Found better path
+                            self.distances.insert(next.clone(), next_distance.clone());
+                            all_predecessors.entry(next.clone()).or_default().clear();
+                            all_predecessors
+                                .entry(next.clone())
+                                .or_default()
+                                .push(node.clone());
+                            self.queue.push(State {
+                                node: next.clone(),
+                                distance: next_distance,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn reconstruct_all_paths(&self, end: &N, all_predecessors: &HashMap<N, Vec<N>>) -> Vec<Vec<N>> {
+        let mut all_paths = Vec::new();
+        let mut current_path = Vec::new();
+
+        self.build_paths(end, all_predecessors, &mut current_path, &mut all_paths);
+
+        // Reverse each path since we built them backwards
+        all_paths.iter_mut().for_each(|path| path.reverse());
+        all_paths
+    }
+
+    fn build_paths(
+        &self,
+        current: &N,
+        all_predecessors: &HashMap<N, Vec<N>>,
+        current_path: &mut Vec<N>,
+        all_paths: &mut Vec<Vec<N>>,
+    ) {
+        current_path.push(current.clone());
+
+        if let Some(predecessors) = all_predecessors.get(current) {
+            for predecessor in predecessors {
+                self.build_paths(predecessor, all_predecessors, current_path, all_paths);
+            }
+        } else {
+            // Reached the start node
+            all_paths.push(current_path.clone());
+        }
+
+        current_path.pop();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -740,5 +827,59 @@ mod dijkstra_tests {
         assert_eq!(path[1].name, "B");
         assert_eq!(path[2].name, "C");
         assert_eq!(distance, 8);
+    }
+}
+
+#[cfg(test)]
+mod all_shortest_paths_tests {
+    use super::*;
+
+    #[test]
+    fn test_multiple_shortest_paths() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+
+        // Create a graph with multiple equal-length paths from 1 to 4
+        //     2
+        //   /   \
+        // 1       4
+        //   \   /
+        //     3
+        graph.add_edge_weighted(1, 2, 1);
+        graph.add_edge_weighted(1, 3, 1);
+        graph.add_edge_weighted(2, 4, 1);
+        graph.add_edge_weighted(3, 4, 1);
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (paths, distance) = dijkstra.all_shortest_paths(&4).unwrap();
+
+        assert_eq!(distance, 2);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&vec![1, 2, 4]));
+        assert!(paths.contains(&vec![1, 3, 4]));
+    }
+
+    #[test]
+    fn test_single_shortest_path() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        graph.add_edge_weighted(1, 2, 1);
+        graph.add_edge_weighted(2, 3, 1);
+        graph.add_edge_weighted(1, 3, 3); // Longer alternative path
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (paths, distance) = dijkstra.all_shortest_paths(&3).unwrap();
+
+        assert_eq!(distance, 2);
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_no_path() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        graph.add_edge_weighted(1, 2, 1);
+        graph.add_edge_weighted(3, 4, 1); // Disconnected
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        assert!(dijkstra.all_shortest_paths(&4).is_none());
     }
 }
