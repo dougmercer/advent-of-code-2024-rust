@@ -1,78 +1,142 @@
 use itertools::Itertools;
+use num_traits::{Bounded, NumOps, One, Zero};
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::ops::{Add, AddAssign};
 
-#[derive(Debug, Default)]
-pub struct Graph<N>
-where
-    N: Eq + Hash + Ord,
+pub trait Weight:
+    Clone + Copy + PartialOrd + Debug + Display + Zero + One + Bounded + NumOps + Add + AddAssign
 {
-    pub edges: HashMap<N, HashSet<N>>,
+}
+impl<T> Weight for T where
+    T: Clone
+        + Copy
+        + PartialOrd
+        + Debug
+        + Display
+        + Zero
+        + One
+        + Bounded
+        + NumOps
+        + Add
+        + AddAssign
+{
 }
 
-impl<N> Graph<N>
+#[derive(Debug, Default)]
+pub struct Graph<N, W = u32>
 where
-    N: Eq + Hash + Clone + PartialOrd + Ord,
+    N: Eq + Hash + Ord,
+    W: Weight,
 {
-    pub fn new() -> Self {
+    adjacency_map: HashMap<N, HashMap<N, W>>,
+    directed: bool,
+}
+
+impl<N, W> Graph<N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default,
+{
+    pub fn new(directed: bool) -> Self {
         Self {
-            edges: HashMap::new(),
+            adjacency_map: HashMap::new(),
+            directed,
         }
     }
 
+    pub fn undirected() -> Self {
+        Self::new(false)
+    }
+
+    pub fn directed() -> Self {
+        Self::new(true)
+    }
+
     pub fn add_node(&mut self, node: N) {
-        self.edges.entry(node).or_default();
+        self.adjacency_map.entry(node).or_default();
     }
 
     pub fn add_edge(&mut self, from: N, to: N) {
-        self.edges
-            .entry(from.clone())
-            .or_default()
-            .insert(to.clone());
-        self.edges.entry(to).or_default().insert(from);
+        self.add_edge_weighted(from, to, W::one())
     }
 
-    pub fn add_directed_edge(&mut self, from: N, to: N) {
-        self.edges.entry(from).or_default().insert(to);
-    }
-
-    pub fn is_undirected(&self) -> bool {
-        self.edges.iter().all(|(from, to_set)| {
-            to_set.iter().all(|to| {
-                // Check if the reverse edge exists
-                self.edges
-                    .get(to)
-                    .map(|neighbors| neighbors.contains(from))
-                    .unwrap_or(false)
-            })
-        })
+    pub fn add_edge_weighted(&mut self, from: N, to: N, weight: W) {
+        if self.directed {
+            self.adjacency_map
+                .entry(from.clone())
+                .or_default()
+                .insert(to, weight);
+        } else {
+            self.adjacency_map
+                .entry(from.clone())
+                .or_default()
+                .insert(to.clone(), weight.clone());
+            self.adjacency_map
+                .entry(to)
+                .or_default()
+                .insert(from, weight);
+        }
     }
 
     pub fn nodes(&self) -> Vec<&N> {
-        self.edges
+        self.adjacency_map
             .keys()
-            .chain(self.edges.values().flatten())
+            .chain(self.adjacency_map.values().flat_map(|m| m.keys()))
             .unique()
             .sorted()
             .collect()
     }
 
-    pub fn neighbors(&self, node: &N) -> Option<&HashSet<N>> {
-        self.edges.get(node)
+    pub fn edges(&self) -> impl Iterator<Item = (&N, &N, &W)> {
+        self.adjacency_map
+            .iter()
+            .flat_map(|(from, edges)| edges.iter().map(move |(to, weight)| (from, to, weight)))
     }
 
-    pub fn bfs(&self, start: N) -> Bfs<'_, N> {
+    pub fn edge_pairs(&self) -> impl Iterator<Item = (&N, &N)> {
+        self.adjacency_map
+            .iter()
+            .flat_map(|(from, edges)| edges.keys().map(move |to| (from, to)))
+    }
+
+    pub fn has_edge(&self, from: &N, to: &N) -> bool {
+        self.adjacency_map
+            .get(from)
+            .map_or(false, |edges| edges.contains_key(to))
+    }
+
+    pub fn get_weight(&self, from: &N, to: &N) -> Option<&W> {
+        self.adjacency_map.get(from)?.get(to)
+    }
+
+    pub fn neighbors(&self, node: &N) -> Option<HashSet<N>> {
+        self.adjacency_map
+            .get(node)
+            .map(|neighbors| neighbors.keys().cloned().collect())
+    }
+
+    pub fn neighbors_weighted(&self, node: &N) -> Option<&HashMap<N, W>> {
+        self.adjacency_map.get(node)
+    }
+
+    pub fn bfs(&self, start: N) -> Bfs<'_, N, W> {
         Bfs::new(self, start)
     }
 
-    pub fn subgraph(&self, nodes: &[N]) -> Graph<N> {
-        let mut subgraph: Graph<N> = Graph::new();
+    pub fn subgraph(&self, nodes: &[N]) -> Graph<N, W> {
+        let mut subgraph: Graph<N, W> = Graph::new(self.directed);
 
         for from in nodes {
             subgraph.add_node(from.clone());
-            if let Some(neighbors) = self.neighbors(from) {
-                for to in neighbors.iter().filter(|n| nodes.contains(n)) {
-                    subgraph.add_edge(from.clone(), to.clone());
+            if let Some(neighbors) = self.neighbors_weighted(from) {
+                for (to, weight) in neighbors {
+                    if nodes.contains(to) {
+                        subgraph.add_edge_weighted(from.clone(), to.clone(), weight.clone());
+                    }
                 }
             }
         }
@@ -81,8 +145,8 @@ where
 
     pub fn connected_components(
         &self,
-    ) -> Result<impl Iterator<Item = Graph<N>> + '_, &'static str> {
-        if !self.is_undirected() {
+    ) -> Result<impl Iterator<Item = Graph<N, W>> + '_, &'static str> {
+        if self.directed {
             return Err("Cannot find connected components of a directed graph");
         }
 
@@ -110,17 +174,22 @@ pub trait GraphTraversal<N> {
     fn next_node(&mut self) -> Option<N>;
 }
 
-pub struct Bfs<'a, N>
+pub struct Bfs<'a, N, W>
 where
     N: Eq + Hash + Clone + Ord,
+    W: Weight,
 {
-    graph: &'a Graph<N>,
+    graph: &'a Graph<N, W>,
     queue: VecDeque<N>,
     visited: HashSet<N>,
 }
 
-impl<'a, N: Eq + Hash + Clone + Ord> Bfs<'a, N> {
-    fn new(graph: &'a Graph<N>, start: N) -> Self {
+impl<'a, N, W> Bfs<'a, N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default,
+{
+    fn new(graph: &'a Graph<N, W>, start: N) -> Self {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
 
@@ -135,7 +204,11 @@ impl<'a, N: Eq + Hash + Clone + Ord> Bfs<'a, N> {
     }
 }
 
-impl<'a, N: Eq + Hash + Clone + Ord> Iterator for Bfs<'a, N> {
+impl<'a, N, W> Iterator for Bfs<'a, N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default,
+{
     type Item = N;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -143,7 +216,7 @@ impl<'a, N: Eq + Hash + Clone + Ord> Iterator for Bfs<'a, N> {
         self.visited.insert(current.clone());
         if let Some(neighbors) = self.graph.neighbors(&current) {
             for neighbor in neighbors {
-                if !self.visited.contains(neighbor) {
+                if !self.visited.contains(&neighbor) {
                     self.visited.insert(neighbor.clone());
                     self.queue.push_back(neighbor.clone());
                 }
@@ -153,20 +226,123 @@ impl<'a, N: Eq + Hash + Clone + Ord> Iterator for Bfs<'a, N> {
     }
 }
 
+pub struct Dijkstra<'a, N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default,
+{
+    graph: &'a Graph<N, W>,
+    distances: HashMap<N, W>,
+    predecessors: HashMap<N, N>,
+    queue: BinaryHeap<State<N, W>>,
+}
+
+// Update State to use the weight type directly
+#[derive(Eq, PartialEq)]
+struct State<N, W> {
+    node: N,
+    distance: W,
+}
+
+// Update Ord implementation to use PartialOrd from Weight trait
+impl<N: Ord, W: PartialOrd + Eq> Ord for State<N, W> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Flip ordering for min-heap
+        match other.distance.partial_cmp(&self.distance) {
+            Some(o) => o.then_with(|| self.node.cmp(&other.node)),
+            None => self.node.cmp(&other.node),
+        }
+    }
+}
+
+impl<N: Ord, W: PartialOrd + Eq> PartialOrd for State<N, W> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a, N, W> Dijkstra<'a, N, W>
+where
+    N: Eq + Hash + Clone + Ord,
+    W: Weight + Clone + Default + Eq,
+{
+    pub fn new(graph: &'a Graph<N, W>, start: N) -> Self {
+        let mut dijkstra = Self {
+            graph,
+            distances: HashMap::new(),
+            predecessors: HashMap::new(),
+            queue: BinaryHeap::new(),
+        };
+
+        // Initialize start node
+        dijkstra.distances.insert(start.clone(), W::zero());
+        dijkstra.queue.push(State {
+            node: start,
+            distance: W::zero(),
+        });
+
+        dijkstra
+    }
+
+    pub fn shortest_path(&mut self, end: &N) -> Option<(Vec<N>, W)> {
+        while let Some(State { node, distance }) = self.queue.pop() {
+            if &node == end {
+                return Some((self.reconstruct_path(end), distance));
+            }
+
+            if let Some(best) = self.distances.get(&node) {
+                if distance > *best {
+                    continue;
+                }
+            }
+
+            if let Some(neighbors) = self.graph.neighbors_weighted(&node) {
+                for (next, weight) in neighbors {
+                    let mut next_distance = distance.clone();
+                    next_distance += weight.clone();
+
+                    if !self.distances.contains_key(next) || next_distance < self.distances[next] {
+                        self.distances.insert(next.clone(), next_distance.clone());
+                        self.predecessors.insert(next.clone(), node.clone());
+                        self.queue.push(State {
+                            node: next.clone(),
+                            distance: next_distance,
+                        });
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn reconstruct_path(&self, end: &N) -> Vec<N> {
+        let mut path = vec![end.clone()];
+        let mut current = end;
+
+        while let Some(predecessor) = self.predecessors.get(current) {
+            path.push(predecessor.clone());
+            current = predecessor;
+        }
+
+        path.reverse();
+        path
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_empty_graph() {
-        let graph: Graph<i32> = Graph::new();
+        let graph: Graph<i32> = Graph::undirected();
         assert!(graph.neighbors(&1).is_none());
     }
 
     #[test]
     fn test_single_edge() {
-        let mut graph = Graph::new();
-        graph.add_directed_edge(1, 2);
+        let mut graph: Graph<i32> = Graph::directed();
+        graph.add_edge(1, 2);
 
         let neighbors = graph.neighbors(&1).unwrap();
         assert_eq!(neighbors.len(), 1);
@@ -176,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_multiple_edges() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<i32> = Graph::undirected();
         graph.add_edge(1, 2);
         graph.add_edge(1, 3);
         graph.add_edge(2, 4);
@@ -189,7 +365,7 @@ mod tests {
 
     #[test]
     fn test_bfs_simple_path() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<i32> = Graph::undirected();
         graph.add_edge(1, 2);
         graph.add_edge(2, 3);
         graph.add_edge(3, 4);
@@ -200,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_bfs_with_branches() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<i32> = Graph::undirected();
         graph.add_edge(1, 2);
         graph.add_edge(1, 3);
         graph.add_edge(2, 4);
@@ -217,10 +393,10 @@ mod tests {
 
     #[test]
     fn test_bfs_with_cycle() {
-        let mut graph = Graph::new();
-        graph.add_directed_edge(1, 2);
-        graph.add_directed_edge(2, 3);
-        graph.add_directed_edge(3, 1);
+        let mut graph: Graph<i32> = Graph::directed();
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(3, 1);
 
         let path: Vec<i32> = graph.bfs(1).collect();
         assert_eq!(path, vec![1, 2, 3]);
@@ -228,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_bfs_disconnected() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<i32> = Graph::directed();
         graph.add_edge(1, 2);
         graph.add_edge(3, 4);
 
@@ -237,23 +413,23 @@ mod tests {
     }
 
     #[test]
-    fn test_string_nodes() {
-        let mut graph = Graph::new();
-        graph.add_edge("a".to_string(), "b".to_string());
-        graph.add_edge("b".to_string(), "c".to_string());
+    fn test_string_bfs() {
+        let mut graph: Graph<char> = Graph::directed();
+        graph.add_edge('a', 'b');
+        graph.add_edge('b', 'c');
 
-        let path: Vec<String> = graph.bfs("a".to_string()).collect();
-        assert_eq!(path, vec!["a", "b", "c"]);
+        let path: Vec<char> = graph.bfs('a').collect();
+        assert_eq!(path, vec!['a', 'b', 'c']);
     }
 
     #[test]
     fn test_nodes() {
-        let mut graph = Graph::new();
-        graph.add_edge("a".to_string(), "b".to_string());
-        graph.add_edge("b".to_string(), "c".to_string());
+        let mut graph: Graph<char> = Graph::directed();
+        graph.add_edge('a', 'b');
+        graph.add_edge('b', 'c');
 
-        let nodes: Vec<&String> = graph.nodes();
-        assert_eq!(nodes, vec!["a", "b", "c"]);
+        let nodes: Vec<&char> = graph.nodes();
+        assert_eq!(nodes, vec![&'a', &'b', &'c']);
     }
 
     #[test]
@@ -264,7 +440,7 @@ mod tests {
             letter: char,
         }
 
-        let mut graph = Graph::new();
+        let mut graph: Graph<CustomNode> = Graph::directed();
         let node1 = CustomNode { id: 1, letter: 'a' };
         let node2 = CustomNode { id: 2, letter: 'b' };
 
@@ -278,7 +454,7 @@ mod tests {
 
     #[test]
     fn test_subgraph() {
-        let mut graph = Graph::new();
+        let mut graph: Graph<i32> = Graph::directed();
         graph.add_edge(1, 2);
         graph.add_edge(2, 3);
         graph.add_edge(3, 4);
@@ -286,13 +462,11 @@ mod tests {
         let sub = graph.subgraph(&[1, 2]);
         let path: Vec<i32> = sub.bfs(1).collect();
         assert_eq!(path, vec![1, 2]);
-        let nodes = sub.nodes();
-        assert_eq!(nodes, vec![&1, &2]);
     }
 
     #[test]
     fn test_connected_components() {
-        let mut graph = Graph::new();
+        let mut graph = Graph::undirected();
 
         // Create two separate components:
         // Component 1: 1-2-3
@@ -317,5 +491,254 @@ mod tests {
         assert!(components[0].neighbors(&1).unwrap().contains(&2));
         assert!(components[0].neighbors(&2).unwrap().contains(&3));
         assert!(components[1].neighbors(&4).unwrap().contains(&5));
+    }
+
+    #[test]
+    fn test_bfs_weighted_graph() {
+        let mut graph: Graph<i32, f64> = Graph::directed();
+
+        // Create a weighted graph:
+        graph.add_edge_weighted(1, 2, 2.5);
+        graph.add_edge_weighted(1, 3, 1.0);
+        graph.add_edge_weighted(2, 4, 1.0);
+        graph.add_edge_weighted(3, 5, 0.5);
+        graph.add_edge_weighted(4, 5, 0.8);
+
+        // BFS from node 1 should visit nodes in order of their distance
+        // (in terms of number of edges, not weights)
+        let path: Vec<i32> = graph.bfs(1).collect();
+
+        // First level: immediate neighbors of 1
+        assert_eq!(path[0], 1);
+        assert!(path[1..3].contains(&2));
+        assert!(path[1..3].contains(&3));
+
+        // Second level: nodes two edges away from 1
+        assert!(path[3..5].contains(&4));
+        assert!(path[3..5].contains(&5));
+
+        // Also verify we get all nodes exactly once
+        assert_eq!(path.len(), 5);
+        let unique: HashSet<_> = path.iter().collect();
+        assert_eq!(unique.len(), 5);
+    }
+
+    #[test]
+    fn test_weighted_subgraph() {
+        let mut graph: Graph<i32, f64> = Graph::directed();
+        graph.add_edge_weighted(1, 2, 2.5);
+        graph.add_edge_weighted(2, 3, 1.0);
+        graph.add_edge_weighted(3, 4, 0.5);
+
+        let sub = graph.subgraph(&[1, 2, 3]);
+
+        // Check nodes
+        assert_eq!(sub.nodes(), vec![&1, &2, &3]);
+
+        // Check weights are preserved
+        assert_eq!(sub.get_weight(&1, &2), Some(&2.5));
+        assert_eq!(sub.get_weight(&2, &3), Some(&1.0));
+        assert_eq!(sub.get_weight(&1, &3), None);
+    }
+
+    #[test]
+    fn test_weighted_connected_components() {
+        let mut graph: Graph<i32, f64> = Graph::undirected();
+
+        // Component 1
+        graph.add_edge_weighted(1, 2, 1.5);
+        graph.add_edge_weighted(2, 3, 2.0);
+        graph.add_edge_weighted(3, 1, 2.5);
+
+        // Component 2
+        graph.add_edge_weighted(4, 5, 3.0);
+
+        let components: Vec<Graph<i32, f64>> = graph.connected_components().unwrap().collect();
+
+        assert_eq!(components.len(), 2);
+
+        // Check first component
+        let c1 = &components[0];
+        assert_eq!(c1.nodes(), vec![&1, &2, &3]);
+        assert_eq!(c1.get_weight(&1, &2), Some(&1.5));
+        assert_eq!(c1.get_weight(&2, &3), Some(&2.0));
+        assert_eq!(c1.get_weight(&3, &1), Some(&2.5));
+
+        // Check second component
+        let c2 = &components[1];
+        assert_eq!(c2.nodes(), vec![&4, &5]);
+        assert_eq!(c2.get_weight(&4, &5), Some(&3.0));
+    }
+
+    #[test]
+    fn test_directed_weighted_edges() {
+        let mut graph: Graph<i32, i32> = Graph::directed();
+
+        graph.add_edge_weighted(1, 2, 10);
+        assert_eq!(graph.get_weight(&1, &2), Some(&10));
+        assert_eq!(graph.get_weight(&2, &1), None);
+    }
+
+    #[test]
+    fn test_modify_weights() {
+        let mut graph: Graph<i32, i32> = Graph::undirected();
+
+        // Add edge with initial weight
+        graph.add_edge_weighted(1, 2, 10);
+        assert_eq!(graph.get_weight(&1, &2), Some(&10));
+
+        // Modify weight
+        graph.add_edge_weighted(1, 2, 20);
+        assert_eq!(graph.get_weight(&1, &2), Some(&20));
+        assert_eq!(graph.get_weight(&2, &1), Some(&20)); // Check both directions
+    }
+
+    #[test]
+    fn test_empty_weighted_graph() {
+        let graph: Graph<i32, f64> = Graph::directed();
+        assert!(graph.nodes().is_empty());
+        assert_eq!(graph.get_weight(&1, &2), None);
+    }
+}
+
+#[cfg(test)]
+mod dijkstra_tests {
+    use super::*;
+
+    #[test]
+    fn test_dijkstra_simple_path() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        graph.add_edge_weighted(1, 2, 4);
+        graph.add_edge_weighted(2, 3, 3);
+        graph.add_edge_weighted(3, 4, 5);
+        graph.add_edge_weighted(1, 4, 15); // Longer direct path
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (path, distance) = dijkstra.shortest_path(&4).unwrap();
+
+        assert_eq!(path, vec![1, 2, 3, 4]);
+        assert_eq!(distance, 12); // 4 + 3 + 5 = 12
+    }
+
+    #[test]
+    fn test_dijkstra_no_path() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        // Two components
+        graph.add_edge_weighted(1, 2, 1);
+        graph.add_edge_weighted(3, 4, 1);
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        assert_eq!(dijkstra.shortest_path(&4), None);
+    }
+
+    #[test]
+    fn test_dijkstra_zero_weight() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        graph.add_edge_weighted(1, 2, 0);
+        graph.add_edge_weighted(2, 3, 0);
+        graph.add_edge_weighted(3, 4, 1);
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (path, distance) = dijkstra.shortest_path(&4).unwrap();
+
+        assert_eq!(path, vec![1, 2, 3, 4]);
+        assert_eq!(distance, 1);
+    }
+
+    #[test]
+    fn test_dijkstra_complex_graph() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        // Create a more complex graph:
+        //    1 --4-- 2 --3-- 3
+        //    |       |       |
+        //    8       2       5
+        //    |       |       |
+        //    4 --3-- 5 --2-- 6
+
+        let edges = vec![
+            (1, 2, 4),
+            (2, 3, 3),
+            (1, 4, 8),
+            (2, 5, 2),
+            (3, 6, 5),
+            (4, 5, 3),
+            (5, 6, 2),
+        ];
+
+        for (from, to, weight) in edges {
+            graph.add_edge_weighted(from, to, weight);
+        }
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (path, distance) = dijkstra.shortest_path(&6).unwrap();
+
+        // Shortest path should be 1 -> 2 -> 5 -> 6 (total: 8)
+        assert_eq!(path, vec![1, 2, 5, 6]);
+        assert_eq!(distance, 8); // 4 + 2 + 2 = 8
+    }
+
+    #[test]
+    fn test_dijkstra_unweighted() {
+        let mut graph: Graph<i32> = Graph::directed();
+        // All edges weight 1
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(1, 4);
+        graph.add_edge(4, 3);
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (path, distance) = dijkstra.shortest_path(&3).unwrap();
+
+        // Both paths (1->2->3 and 1->4->3) are equal length
+        assert_eq!(distance, 2);
+        assert!(path == vec![1, 2, 3] || path == vec![1, 4, 3]);
+    }
+
+    #[test]
+    fn test_dijkstra_self_loop() {
+        let mut graph: Graph<i32, usize> = Graph::directed();
+        graph.add_edge_weighted(1, 1, 1); // Self loop
+        graph.add_edge_weighted(1, 2, 2);
+
+        let mut dijkstra = Dijkstra::new(&graph, 1);
+        let (path, distance) = dijkstra.shortest_path(&2).unwrap();
+
+        assert_eq!(path, vec![1, 2]);
+        assert_eq!(distance, 2); // Should ignore self loop
+    }
+
+    #[test]
+    fn test_dijkstra_custom_type() {
+        #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
+        struct Node {
+            id: i32,
+            name: String,
+        }
+
+        let mut graph: Graph<Node, usize> = Graph::directed();
+        let n1 = Node {
+            id: 1,
+            name: "A".to_string(),
+        };
+        let n2 = Node {
+            id: 2,
+            name: "B".to_string(),
+        };
+        let n3 = Node {
+            id: 3,
+            name: "C".to_string(),
+        };
+
+        graph.add_edge_weighted(n1.clone(), n2.clone(), 5);
+        graph.add_edge_weighted(n2.clone(), n3.clone(), 3);
+
+        let mut dijkstra = Dijkstra::new(&graph, n1.clone());
+        let (path, distance) = dijkstra.shortest_path(&n3).unwrap();
+
+        assert_eq!(path.len(), 3);
+        assert_eq!(path[0].name, "A");
+        assert_eq!(path[1].name, "B");
+        assert_eq!(path[2].name, "C");
+        assert_eq!(distance, 8);
     }
 }

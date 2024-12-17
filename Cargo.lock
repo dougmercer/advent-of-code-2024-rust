@@ -16,6 +16,7 @@ dependencies = [
  "bitflags 2.6.0",
  "image",
  "itertools 0.13.0",
+ "num-traits",
  "rayon",
  "topological-sort",
 ]
