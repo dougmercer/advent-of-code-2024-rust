@@ -56,6 +56,7 @@ fn problem(input: &str, width: usize, height: usize, steps: usize) -> usize {
     compute_safety_factor(&robots, width, height)
 }
 
+#[allow(dead_code)]
 fn robots_to_grid(robots: &Vec<Robot>, width: usize, height: usize) -> Grid<usize> {
     let mut grid: Grid<usize> = Grid::new(width, height, 0);
     robots
@@ -69,6 +70,7 @@ fn robots_to_grid(robots: &Vec<Robot>, width: usize, height: usize) -> Grid<usiz
     grid
 }
 
+#[allow(dead_code)]
 fn show_robots(robots: &Vec<Robot>, width: usize, height: usize) {
     println!("{}", robots_to_grid(&robots, width, height));
     println!();
@@ -95,6 +97,7 @@ fn compute_safety_factor(robots: &Vec<Robot>, width: usize, height: usize) -> us
         .product()
 }
 
+#[allow(dead_code)]
 fn problem2(input: &str, width: usize, height: usize, max_steps: usize, mut safety_factor: f64) {
     let mut robots = parse_input(input);
     let mut step = 0;
@@ -116,6 +119,7 @@ fn problem2(input: &str, width: usize, height: usize, max_steps: usize, mut safe
     }
 }
 
+#[allow(dead_code)]
 fn render_easter_egg(
     input: &str,
     width: usize,

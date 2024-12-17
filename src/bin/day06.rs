@@ -79,6 +79,7 @@ impl Map {
         self.occupancy[(x, y)] = true;
     }
 
+    #[allow(dead_code)]
     fn debug_loop_points(&self, guard_pos: (i32, i32), loop_points: &[(usize, usize)]) -> String {
         let mut output = String::new();
         output.push('\n');
@@ -169,7 +170,7 @@ struct Guard<'a> {
 }
 
 impl<'a> Guard<'a> {
-    fn new(i: i32, j: i32, map: &'a mut Map, direction: Direction) -> Guard {
+    fn new(i: i32, j: i32, map: &'a mut Map, direction: Direction) -> Guard<'a> {
         map.visit(i as usize, j as usize, &direction);
         Guard {
             i,
@@ -345,8 +346,8 @@ fn part2(input: &str) -> Result<usize, Box<dyn Error>> {
 fn main() -> Result<(), Box<dyn Error>> {
     let path: &str = "data/day6.input";
     let input = fs::read_to_string(path)?;
-    println!("Part 1: {:?}", part1(&input));
-    println!("Part 2: {:?}", part2(&input));
+    println!("Part 1: {:?}", part1(&input)?);
+    println!("Part 2: {:?}", part2(&input)?);
     Ok(())
 }
 

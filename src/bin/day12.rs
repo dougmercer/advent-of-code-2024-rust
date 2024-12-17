@@ -29,7 +29,7 @@ struct Plant {
 fn garden_as_graph(plants: Grid<char>) -> Graph<Plant> {
     iproduct!(0..plants.height, 0..plants.width)
         .map(|(x, y)| ((x, y), plants.cardinal_neighbors(x, y)))
-        .fold(Graph::new(), |mut graph, (node, edges)| {
+        .fold(Graph::undirected(), |mut graph, (node, edges)| {
             let from = Plant {
                 xy: node,
                 plant_type: plants[node],
@@ -45,7 +45,6 @@ fn garden_as_graph(plants: Grid<char>) -> Graph<Plant> {
                         plant_type: plant_type,
                     };
                     graph.add_edge(from, to);
-                    graph.add_edge(to, from);
                 }
             }
             graph
