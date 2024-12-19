@@ -168,6 +168,15 @@ where
             None
         }))
     }
+
+    pub fn shortest_path(&self, start: N, end: N) -> Option<(Vec<N>, W)>
+    where
+        N: Eq + Hash + Clone + Ord,
+        W: Weight + Clone + Default + Eq,
+    {
+        let mut dijkstra = Dijkstra::new(self, start);
+        dijkstra.shortest_path(&end)
+    }
 }
 
 pub trait GraphTraversal<N> {
