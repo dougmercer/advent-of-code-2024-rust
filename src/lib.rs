@@ -95,6 +95,10 @@ impl<T> Grid<T> {
         self.data.iter()
     }
 
+    pub fn iter_items(&self) -> impl Iterator<Item = ((usize, usize), &T)> {
+        (0..self.height * self.width).map(|i| ((i % self.width, i / self.width), &self.data[i]))
+    }
+
     pub fn is_within_extents(&self, x: i32, y: i32) -> bool {
         x >= 0 && x < (self.width as i32) && y >= 0 && y < (self.height as i32)
     }
